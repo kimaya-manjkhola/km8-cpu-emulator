@@ -7,7 +7,3 @@ cmake-build-*/
 .vscode/
 .idea/
 .DS_Store
-
-# Private notes: kept on this Mac only, never uploaded
-docs/HOW_IT_WORKS.md
-docs/INTERVIEW_QA.md
