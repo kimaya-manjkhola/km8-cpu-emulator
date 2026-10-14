@@ -43,6 +43,7 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(km8_tests
     tests/test_cpu_core.cpp
+    tests/test_alu_and_jumps.cpp
 )
 target_link_libraries(km8_tests PRIVATE km8_core Catch2::Catch2WithMain)
 km8_set_warnings(km8_tests)

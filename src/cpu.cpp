@@ -83,10 +83,42 @@ void Cpu::fail(const std::string& message) {
     throw CpuError(message + " at address " + toHex(instructionAddress_));
 }
 
+std::uint8_t Cpu::addWithFlags(std::uint8_t a, std::uint8_t b) {
+    // Add in a wider type so the 9th bit (the carry out) is not lost.
+    unsigned int sum = a + b;
+    carry_ = sum > 0xFF;
+    std::uint8_t result = static_cast<std::uint8_t>(sum);  // keep the low 8 bits
+    zero_ = (result == 0);
+    return result;
+}
+
+std::uint8_t Cpu::subtractWithFlags(std::uint8_t a, std::uint8_t b) {
+    carry_ = b > a;  // a borrow is needed when subtracting a bigger number
+    // Unsigned arithmetic wraps modulo 256, so 0 - 1 gives 255.
+    std::uint8_t result = static_cast<std::uint8_t>(a - b);
+    zero_ = (result == 0);
+    return result;
+}
+
+void Cpu::setLogicFlags(std::uint8_t result) {
+    zero_ = (result == 0);
+    carry_ = false;  // logic operations can never carry, so C is cleared
+}
+
+void Cpu::jumpIf(bool condition) {
+    // The target is always fetched, even when the jump is not taken, so that
+    // PC ends up on the next instruction either way.
+    std::uint8_t target = fetchByte();
+    if (condition) {
+        pc_ = target;
+    }
+}
+
 void Cpu::execute(std::uint8_t opcode) {
     // The decoder: one case per opcode, like a case statement in Verilog.
     // Operands are always fetched in the order they appear in memory.
     switch (opcode) {
+        // ----- Data movement (these never change the flags) -----
         case op::HALT:
             halted_ = true;
             break;
@@ -117,6 +149,82 @@ void Cpu::execute(std::uint8_t opcode) {
             destination = fetchRegister();
             break;
         }
+
+        // ----- Arithmetic -----
+        case op::ADD: {  // ADD r1, r2
+            std::uint8_t& r1 = fetchRegister();
+            std::uint8_t r2 = fetchRegister();
+            r1 = addWithFlags(r1, r2);
+            break;
+        }
+
+        case op::SUB: {  // SUB r1, r2
+            std::uint8_t& r1 = fetchRegister();
+            std::uint8_t r2 = fetchRegister();
+            r1 = subtractWithFlags(r1, r2);
+            break;
+        }
+
+        case op::INC: {  // INC r - only Z changes; C keeps its old value
+            std::uint8_t& r = fetchRegister();
+            ++r;
+            zero_ = (r == 0);
+            break;
+        }
+
+        case op::DEC: {  // DEC r - only Z changes; C keeps its old value
+            std::uint8_t& r = fetchRegister();
+            --r;
+            zero_ = (r == 0);
+            break;
+        }
+
+        // ----- Logic -----
+        case op::AND: {  // AND r1, r2
+            std::uint8_t& r1 = fetchRegister();
+            r1 &= fetchRegister();
+            setLogicFlags(r1);
+            break;
+        }
+
+        case op::OR: {  // OR r1, r2
+            std::uint8_t& r1 = fetchRegister();
+            r1 |= fetchRegister();
+            setLogicFlags(r1);
+            break;
+        }
+
+        case op::XOR: {  // XOR r1, r2
+            std::uint8_t& r1 = fetchRegister();
+            r1 ^= fetchRegister();
+            setLogicFlags(r1);
+            break;
+        }
+
+        // ----- Compare -----
+        case op::CMP: {  // CMP r1, r2 - subtract only for the flags
+            std::uint8_t r1 = fetchRegister();
+            std::uint8_t r2 = fetchRegister();
+            subtractWithFlags(r1, r2);  // result deliberately thrown away
+            break;
+        }
+
+        // ----- Jumps -----
+        case op::JMP:
+            jumpIf(true);
+            break;
+
+        case op::JZ:
+            jumpIf(zero_);
+            break;
+
+        case op::JNZ:
+            jumpIf(!zero_);
+            break;
+
+        case op::JC:
+            jumpIf(carry_);
+            break;
 
         default:
             fail("unknown opcode " + toHex(opcode));

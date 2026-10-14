@@ -82,6 +82,14 @@ private:
     // Decode the opcode and carry out the instruction.
     void execute(std::uint8_t opcode);
 
+    // ALU helpers: compute a result and set the flags as docs/SPEC.md says.
+    std::uint8_t addWithFlags(std::uint8_t a, std::uint8_t b);
+    std::uint8_t subtractWithFlags(std::uint8_t a, std::uint8_t b);
+    void setLogicFlags(std::uint8_t result);
+
+    // Read the jump target operand, then jump to it only if condition is true.
+    void jumpIf(bool condition);
+
     // Stop the CPU and throw a CpuError that says where it happened.
     [[noreturn]] void fail(const std::string& message);
 
