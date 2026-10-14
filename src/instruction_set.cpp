@@ -59,4 +59,39 @@ const InstructionInfo* findInstructionByOpcode(std::uint8_t opcode) {
     return nullptr;
 }
 
+namespace {
+
+std::string formatOperand(OperandType type, std::uint8_t operand) {
+    switch (type) {
+        case OperandType::Register:
+            // Show "?" rather than crash: the trace runs before the CPU checks it.
+            return operand < kNumRegisters ? std::string(1, "ABCD"[operand]) : "?";
+        case OperandType::Value:
+            return std::to_string(operand);
+        case OperandType::Address:
+            return toHex(operand);
+    }
+    return "?";  // unreachable: every OperandType is handled above
+}
+
+}  // namespace
+
+std::string formatInstruction(const std::array<std::uint8_t, kMemorySize>& memory,
+                              std::uint8_t address) {
+    std::uint8_t opcode = memory[address];
+    const InstructionInfo* info = findInstructionByOpcode(opcode);
+    if (info == nullptr) {
+        return "??? (" + toHex(opcode) + ")";
+    }
+
+    std::string text = info->name;
+    for (std::size_t i = 0; i < info->operands.size(); ++i) {
+        // Cast back to 8 bits so reading past address 255 wraps to 0, as the CPU does.
+        auto operandAddress = static_cast<std::uint8_t>(address + 1 + i);
+        text += (i == 0) ? " " : ", ";
+        text += formatOperand(info->operands[i], memory[operandAddress]);
+    }
+    return text;
+}
+
 }  // namespace km8

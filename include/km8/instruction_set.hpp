@@ -1,11 +1,15 @@
 // instruction_set.hpp - a table describing every KM-8 instruction: its name,
 // opcode and the kind of each operand. The assembler uses it to turn text
-// into bytes; the table is the one place where names map to opcodes.
+// into bytes, and the trace output uses it to turn bytes back into text.
+// The table is the one place where names map to opcodes.
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
+
+#include "km8/cpu.hpp"
 
 namespace km8 {
 
@@ -31,5 +35,10 @@ const std::vector<InstructionInfo>& instructionSet();
 // `name` must be upper case, e.g. "ADD".
 const InstructionInfo* findInstructionByName(const std::string& name);
 const InstructionInfo* findInstructionByOpcode(std::uint8_t opcode);
+
+// Describe the instruction stored in memory at `address` as assembly text,
+// e.g. "LDI A, 10" or "JNZ 0x03". Used by the --trace output.
+std::string formatInstruction(const std::array<std::uint8_t, kMemorySize>& memory,
+                              std::uint8_t address);
 
 }  // namespace km8

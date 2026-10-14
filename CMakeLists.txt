@@ -48,8 +48,11 @@ add_executable(km8_tests
     tests/test_alu_and_jumps.cpp
     tests/test_stack.cpp
     tests/test_assembler.cpp
+    tests/test_programs.cpp
 )
 target_link_libraries(km8_tests PRIVATE km8_core Catch2::Catch2WithMain)
+# Lets test_programs.cpp find the example .asm files from any build folder.
+target_compile_definitions(km8_tests PRIVATE KM8_PROGRAMS_DIR="${CMAKE_SOURCE_DIR}/programs")
 km8_set_warnings(km8_tests)
 
 # Register every Catch2 test case with CTest, so "ctest" runs them all.
