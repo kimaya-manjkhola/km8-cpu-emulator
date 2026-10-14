@@ -1,7 +1,6 @@
 # KM-8 Specification
 
-This document is the source of truth for the KM-8 design.
-Do not change it without asking first.
+This document defines the KM-8 instruction set architecture. The emulator and assembler are implemented to match it.
 
 ## Machine
 
@@ -31,9 +30,9 @@ Do not change it without asking first.
 | 0x11   | SUB   | r1, r2    | r1 = r1 - r2                                         | Z if result 0; C if r2 > r1 (borrow) |
 | 0x12   | INC   | r         | r = r + 1                                            | Z only                             |
 | 0x13   | DEC   | r         | r = r - 1                                            | Z only                             |
-| 0x20   | AND   | r1, r2    |                                                      | Z; C cleared                       |
-| 0x21   | OR    | r1, r2    |                                                      | Z; C cleared                       |
-| 0x22   | XOR   | r1, r2    |                                                      | Z; C cleared                       |
+| 0x20   | AND   | r1, r2    | r1 = r1 AND r2                                       | Z; C cleared                       |
+| 0x21   | OR    | r1, r2    | r1 = r1 OR r2                                        | Z; C cleared                       |
+| 0x22   | XOR   | r1, r2    | r1 = r1 XOR r2                                       | Z; C cleared                       |
 | 0x30   | CMP   | r1, r2    | like SUB but only sets flags; r1 unchanged           |                                    |
 | 0x40   | JMP   | addr      | PC = addr                                            |                                    |
 | 0x41   | JZ    | addr      | jump if Z set                                        |                                    |
