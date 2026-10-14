@@ -19,16 +19,16 @@ using Bytes = std::vector<std::uint8_t>;
 // Instruction table
 // ---------------------------------------------------------------------------
 
-TEST_CASE("The instruction table has 22 instructions with unique names and opcodes", "[isa]") {
+TEST_CASE("The instruction table has 24 instructions with unique names and opcodes", "[isa]") {
     std::set<std::string> names;
     std::set<std::uint8_t> opcodes;
     for (const InstructionInfo& info : instructionSet()) {
         names.insert(info.name);
         opcodes.insert(info.opcode);
     }
-    REQUIRE(instructionSet().size() == 22);
-    REQUIRE(names.size() == 22);
-    REQUIRE(opcodes.size() == 22);
+    REQUIRE(instructionSet().size() == 24);
+    REQUIRE(names.size() == 24);
+    REQUIRE(opcodes.size() == 24);
 }
 
 TEST_CASE("The CPU accepts exactly the opcodes in the instruction table", "[isa][cpu]") {
@@ -83,6 +83,11 @@ TEST_CASE("Every instruction assembles to its opcode", "[asm]") {
 TEST_CASE("Register names A-D become codes 0-3", "[asm][registers]") {
     REQUIRE(assemble("MOV A, B") == Bytes{op::MOV, 0, 1});
     REQUIRE(assemble("MOV C, D") == Bytes{op::MOV, 2, 3});
+}
+
+TEST_CASE("LDR and STR take two registers: value/destination, then pointer", "[asm][registers]") {
+    REQUIRE(assemble("LDR A, B") == Bytes{op::LDR, reg::A, reg::B});
+    REQUIRE(assemble("str c, d") == Bytes{op::STR, reg::C, reg::D});
 }
 
 TEST_CASE("Instruction and register names are not case-sensitive", "[asm]") {
@@ -194,6 +199,9 @@ TEST_CASE("Wrong kind of operand", "[asm][errors]") {
     requireError("INC E", "line 1: expected a register (A, B, C or D), got 'E'");
     requireError("LDI A, B", "line 1: expected a number, got 'B'");
     requireError("JMP -1", "line 1: expected an address or label, got '-1'");
+    // LDR/STR take the address from a register, so a number is rejected.
+    requireError("LDR A, 0x80", "line 1: expected a register (A, B, C or D), got '0x80'");
+    requireError("STR A, loop", "line 1: expected a register (A, B, C or D), got 'loop'");
 }
 
 TEST_CASE("Bad numbers", "[asm][errors][numbers]") {

@@ -5,9 +5,9 @@ KM-8 is a small, made-up 8-bit CPU. I designed it from scratch and wrote an emul
 - a **CPU emulator** that runs KM-8 machine code one fetch-decode-execute cycle at a time,
 - a **two-pass assembler** that turns KM-8 assembly text into machine code,
 - a **command-line runner**, `km8`, with an optional instruction-by-instruction trace,
-- **five example programs** and **100 unit tests** (Catch2).
+- **five example programs** and **111 unit tests** (Catch2).
 
-The design is deliberately small enough to understand completely. It has 4 registers, 2 flags, 256 bytes of memory and 22 instructions. The full design is in [docs/SPEC.md](docs/SPEC.md).
+The design is deliberately small enough to understand completely. It has 4 registers, 2 flags, 256 bytes of memory and 24 instructions. The full design is in [docs/SPEC.md](docs/SPEC.md).
 
 ## The fetch-decode-execute cycle
 
@@ -54,6 +54,8 @@ Each instruction is one opcode byte followed by 0, 1 or 2 operand bytes.
 | 0x03   | `LOAD r, addr` | r = memory[addr]                           | –                            |
 | 0x04   | `STORE r, addr`| memory[addr] = r                           | –                            |
 | 0x05   | `MOV r1, r2`   | r1 = r2                                    | –                            |
+| 0x06   | `LDR r1, r2`   | r1 = memory[r2] (address held in r2)       | –                            |
+| 0x07   | `STR r1, r2`   | memory[r2] = r1 (address held in r2)       | –                            |
 | 0x10   | `ADD r1, r2`   | r1 = r1 + r2                               | Z if result 0; C if > 255    |
 | 0x11   | `SUB r1, r2`   | r1 = r1 − r2                               | Z if result 0; C if r2 > r1  |
 | 0x12   | `INC r`        | r = r + 1                                  | Z only                       |
@@ -127,7 +129,7 @@ You can also run the test program directly. It prints a one-line summary:
 | [programs/add.asm](programs/add.asm) | adds 25 and 17 | A = 42 |
 | [programs/countdown.asm](programs/countdown.asm) | counts down from 10 to 0 in a loop | A = 0, Z = 1 |
 | [programs/multiply.asm](programs/multiply.asm) | 6 × 7 by repeated addition | A = 42 |
-| [programs/sum_array.asm](programs/sum_array.asm) | adds 5 numbers stored in memory | A = 150 |
+| [programs/sum_array.asm](programs/sum_array.asm) | adds 5 numbers stored in memory, looping with a pointer register and `LDR` | A = 150 |
 | [programs/subroutine.asm](programs/subroutine.asm) | calls a "double" subroutine twice | A = 20 |
 
 The tests in `tests/test_programs.cpp` assemble and run each of these and check the answer.
@@ -204,6 +206,7 @@ The build makes three targets. `km8_core` is a library containing everything exc
 - **A CPU error halts the CPU.** The spec says a bad instruction stops the CPU, so `fail()` sets `halted_` before throwing. The final state can still be inspected afterwards.
 - **One cycle = one instruction.** KM-8 has no pipeline or timing model, so counting instructions is the simplest useful measure.
 - **Read-only accessors.** Tests and the CLI can inspect every register, flag and memory byte, but only the CPU's own instructions can change them. This keeps the class's state consistent.
+- **Register-indirect addressing (`LDR`/`STR`).** At first KM-8 only had `LOAD`/`STORE`, where the address is a fixed byte in the program. That made it impossible to loop over an array, so `sum_array.asm` had to repeat a `LOAD` and an `ADD` for every element. `LDR r1, r2` and `STR r1, r2` take the address from a register instead. A program can now keep a pointer in a register and `INC` it each time round a loop, as `sum_array.asm` does. This is the smallest addition that makes arrays practical. It reuses the existing two-register operand format, so the decoder and assembler needed no new operand type. It also doesn't change the flags, so a loop's counter and its `JNZ` aren't disturbed.
 - **One instruction table shared by the assembler and the trace.** Names, opcodes and operand types live in a single table in `instruction_set.cpp`. A test checks that the CPU accepts exactly the opcodes in that table, so the decoder and the assembler cannot drift apart.
 - **A two-pass assembler.** Pass 1 records every label's address and pass 2 encodes the bytes. This is the simplest way to allow jumps forward to labels that appear later in the file.
 - **A library plus thin front ends.** All the logic is in `km8_core`, so it can be tested without running the command-line program.
@@ -212,7 +215,7 @@ The build makes three targets. `km8_core` is a library containing everything exc
 
 - No interrupts, no input/output devices, no pipeline or cache.
 - The stack can grow into program memory; this is not detected. POP on an empty stack wraps SP from 0 up to 1.
-- `LOAD` and `STORE` only take a fixed address. There is no indexed or indirect addressing, so a loop cannot walk through an array (see `sum_array.asm`, which unrolls its loop instead).
+- `LDR`/`STR` take the whole address from one register. There is no "base + offset" addressing, so a pointer must be moved with `INC`/`DEC` or `ADD`.
 - The program, its data and the stack all share the same 256 bytes of memory.
 - The assembler has no directives for data (such as `.byte`). Data is written to memory at run time with `LDI` and `STORE`.
 

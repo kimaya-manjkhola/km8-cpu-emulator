@@ -25,6 +25,8 @@ Do not change it without asking first.
 | 0x03   | LOAD  | r, addr   | r = memory[addr]                                     |                                    |
 | 0x04   | STORE | r, addr   | memory[addr] = r                                     |                                    |
 | 0x05   | MOV   | r1, r2    | r1 = r2                                              |                                    |
+| 0x06   | LDR   | r1, r2    | r1 = memory[r2] (load from the address held in r2)   |                                    |
+| 0x07   | STR   | r1, r2    | memory[r2] = r1 (store to the address held in r2)    |                                    |
 | 0x10   | ADD   | r1, r2    | r1 = r1 + r2                                         | Z if result 0; C if result > 255   |
 | 0x11   | SUB   | r1, r2    | r1 = r1 - r2                                         | Z if result 0; C if r2 > r1 (borrow) |
 | 0x12   | INC   | r         | r = r + 1                                            | Z only                             |
@@ -41,6 +43,9 @@ Do not change it without asking first.
 | 0x51   | POP   | r         | r = memory[SP]; SP = SP + 1                          |                                    |
 | 0x52   | CALL  | addr      | push the address of the next instruction, then PC = addr |                                |
 | 0x53   | RET   |           | pop an address into PC                               |                                    |
+
+LDR and STR use register-indirect addressing: the memory address is the value
+held in r2. Neither instruction changes the flags.
 
 ## Known limitations
 

@@ -1,12 +1,12 @@
-; sum_array.asm - add up 5 numbers stored in memory.
+; sum_array.asm - add up 5 numbers stored in memory, using a loop.
 ;
 ; Step 1 writes the array 10, 20, 30, 40, 50 to addresses 0x80-0x84
 ; (well clear of the program and of the stack at the top of memory).
-; Step 2 reads each number back and adds it to a total in A.
-;
-; KM-8's LOAD only takes a fixed address (there is no indexed addressing),
-; so a loop cannot step through the array. Instead the sum is "unrolled":
-; one LOAD and one ADD per element.
+; Step 2 walks through the array with a loop:
+;   B is a pointer: it holds the address of the current element.
+;   C is a counter: how many elements are left to add.
+;   LDR D, B reads the element B points at ("register-indirect" addressing),
+;   so the same instruction reads a different address each time round.
 ; Result: A = 150, and the total is also saved at address 0x85.
 
 ; ----- Step 1: put the array in memory -----
@@ -21,18 +21,16 @@
         LDI A, 50
         STORE A, 0x84
 
-; ----- Step 2: add the elements -----
+; ----- Step 2: add the elements in a loop -----
         LDI A, 0        ; A = running total
-        LOAD B, 0x80    ; B = element 0
-        ADD A, B
-        LOAD B, 0x81    ; B = element 1
-        ADD A, B
-        LOAD B, 0x82    ; B = element 2
-        ADD A, B
-        LOAD B, 0x83    ; B = element 3
-        ADD A, B
-        LOAD B, 0x84    ; B = element 4
-        ADD A, B
+        LDI B, 0x80     ; B = pointer to the first element
+        LDI C, 5        ; C = number of elements left
+
+loop:   LDR D, B        ; D = memory[B], the current element
+        ADD A, D        ; add it to the total
+        INC B           ; move the pointer to the next element
+        DEC C           ; one fewer element left; sets Z when C reaches 0
+        JNZ loop        ; more elements? go round again
 
         STORE A, 0x85   ; save the total just after the array
         HALT

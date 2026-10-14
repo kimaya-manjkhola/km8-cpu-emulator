@@ -163,6 +163,154 @@ TEST_CASE("MOV of a register to itself changes nothing", "[cpu][mov]") {
 }
 
 // ---------------------------------------------------------------------------
+// LDR and STR (register-indirect addressing)
+// ---------------------------------------------------------------------------
+
+TEST_CASE("LDR loads from the address held in a register", "[cpu][ldr]") {
+    Cpu cpu = runProgram({
+        op::LDI, reg::A, 0x5A,
+        op::STORE, reg::A, 0x90,  // put a value at 0x90
+        op::LDI, reg::B, 0x90,    // B points at it
+        op::LDR, reg::C, reg::B,  // C = memory[B]
+        op::HALT,
+    });
+    REQUIRE(cpu.registerValue(reg::C) == 0x5A);
+    REQUIRE(cpu.registerValue(reg::B) == 0x90);  // the pointer is unchanged
+}
+
+TEST_CASE("LDR from address 0 reads the first program byte", "[cpu][ldr][edge]") {
+    Cpu cpu = runProgram({
+        op::LDI, reg::B, 0,       // address 0 holds this LDI opcode
+        op::LDR, reg::A, reg::B,
+        op::HALT,
+    });
+    REQUIRE(cpu.registerValue(reg::A) == op::LDI);
+}
+
+TEST_CASE("LDR from address 255 reads the last byte of memory", "[cpu][ldr][edge]") {
+    Cpu cpu = runProgram({
+        op::LDI, reg::A, 0xC3,
+        op::STORE, reg::A, 255,
+        op::LDI, reg::B, 255,
+        op::LDR, reg::D, reg::B,
+        op::HALT,
+    });
+    REQUIRE(cpu.registerValue(reg::D) == 0xC3);
+}
+
+TEST_CASE("LDR can use the same register as pointer and destination", "[cpu][ldr][edge]") {
+    Cpu cpu = runProgram({
+        op::LDI, reg::A, 0x11,
+        op::STORE, reg::A, 0x80,
+        op::LDI, reg::A, 0x80,    // A = pointer
+        op::LDR, reg::A, reg::A,  // A = memory[A]: the pointer is read first
+        op::HALT,
+    });
+    REQUIRE(cpu.registerValue(reg::A) == 0x11);
+}
+
+TEST_CASE("STR stores to the address held in a register", "[cpu][str]") {
+    Cpu cpu = runProgram({
+        op::LDI, reg::A, 0x5A,
+        op::LDI, reg::B, 0x80,
+        op::STR, reg::A, reg::B,  // memory[B] = A
+        op::HALT,
+    });
+    REQUIRE(cpu.memory()[0x80] == 0x5A);
+    REQUIRE(cpu.registerValue(reg::A) == 0x5A);  // the value is unchanged
+    REQUIRE(cpu.registerValue(reg::B) == 0x80);  // the pointer is unchanged
+}
+
+TEST_CASE("STR to address 0 overwrites the first program byte", "[cpu][str][edge]") {
+    // The program has already run past address 0, so overwriting it is safe
+    // here; it shows that STR can reach the bottom of memory.
+    Cpu cpu = runProgram({
+        op::LDI, reg::A, 0x77,
+        op::LDI, reg::B, 0,
+        op::STR, reg::A, reg::B,
+        op::HALT,
+    });
+    REQUIRE(cpu.memory()[0] == 0x77);
+}
+
+TEST_CASE("STR to address 255 writes the last byte of memory", "[cpu][str][edge]") {
+    Cpu cpu = runProgram({
+        op::LDI, reg::A, 0xEE,
+        op::LDI, reg::B, 255,
+        op::STR, reg::A, reg::B,
+        op::HALT,
+    });
+    REQUIRE(cpu.memory()[255] == 0xEE);
+}
+
+TEST_CASE("STR then LDR through a pointer round-trips a value", "[cpu][ldr][str]") {
+    Cpu cpu = runProgram({
+        op::LDI, reg::A, 200,
+        op::LDI, reg::B, 0xA0,
+        op::STR, reg::A, reg::B,
+        op::LDR, reg::C, reg::B,
+        op::HALT,
+    });
+    REQUIRE(cpu.registerValue(reg::C) == 200);
+}
+
+namespace {
+
+// Run `flagSetup`, then "LDI B, 0x80" and "<opcode> A, B", then HALT.
+// A is 0 and memory[0x80] is 0, so if LDR or STR wrongly updated the flags
+// from that value, Z would change.
+Cpu runAfterFlagSetup(std::vector<std::uint8_t> flagSetup, std::uint8_t opcode) {
+    flagSetup.insert(flagSetup.end(), {op::LDI, reg::B, 0x80, opcode, reg::A, reg::B, op::HALT});
+    return runProgram(flagSetup);
+}
+
+// 255 + 1 = 0 with a carry: Z and C both set.
+const std::vector<std::uint8_t> kSetBothFlags = {
+    op::LDI, reg::D, 255, op::LDI, reg::C, 1, op::ADD, reg::D, reg::C,
+};
+// 1 + 1 = 2: Z and C both clear.
+const std::vector<std::uint8_t> kClearBothFlags = {
+    op::LDI, reg::D, 1, op::ADD, reg::D, reg::D,
+};
+
+}  // namespace
+
+TEST_CASE("LDR and STR do not change the flags", "[cpu][ldr][str][flags]") {
+    // Checked with both flags set and with both clear, so a wrong "set"
+    // and a wrong "clear" would both be caught.
+    Cpu ldrSet = runAfterFlagSetup(kSetBothFlags, op::LDR);
+    REQUIRE(ldrSet.zeroFlag());
+    REQUIRE(ldrSet.carryFlag());
+
+    Cpu ldrClear = runAfterFlagSetup(kClearBothFlags, op::LDR);
+    REQUIRE_FALSE(ldrClear.zeroFlag());
+    REQUIRE_FALSE(ldrClear.carryFlag());
+
+    Cpu strSet = runAfterFlagSetup(kSetBothFlags, op::STR);
+    REQUIRE(strSet.zeroFlag());
+    REQUIRE(strSet.carryFlag());
+
+    Cpu strClear = runAfterFlagSetup(kClearBothFlags, op::STR);
+    REQUIRE_FALSE(strClear.zeroFlag());
+    REQUIRE_FALSE(strClear.carryFlag());
+}
+
+TEST_CASE("LDR and STR reject invalid register codes", "[cpu][ldr][str][errors]") {
+    SECTION("LDR with a bad pointer register") {
+        Cpu cpu;
+        cpu.loadProgram({op::LDR, reg::A, 4});
+        REQUIRE_THROWS_WITH(cpu.step(), "invalid register code 4 at address 0x00");
+        REQUIRE(cpu.isHalted());
+    }
+    SECTION("STR with a bad value register") {
+        Cpu cpu;
+        cpu.loadProgram({op::STR, 9, reg::B});
+        REQUIRE_THROWS_WITH(cpu.step(), "invalid register code 9 at address 0x00");
+        REQUIRE(cpu.isHalted());
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Errors and the cycle limit
 // ---------------------------------------------------------------------------
 
@@ -175,9 +323,9 @@ TEST_CASE("An unknown opcode stops the CPU with a clear error", "[cpu][errors]")
 }
 
 TEST_CASE("Unused opcodes in the gaps are rejected too", "[cpu][errors]") {
-    // 0x06 sits between MOV (0x05) and ADD (0x10) and is not an instruction.
+    // 0x08 sits between STR (0x07) and ADD (0x10) and is not an instruction.
     Cpu cpu;
-    cpu.loadProgram({0x06});
+    cpu.loadProgram({0x08});
     REQUIRE_THROWS_AS(cpu.step(), CpuError);
 }
 

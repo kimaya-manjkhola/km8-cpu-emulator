@@ -59,9 +59,11 @@ TEST_CASE("multiply.asm multiplies 6 by 7", "[programs]") {
     REQUIRE(cpu.registerValue(reg::C) == 0);  // the counter ran out
 }
 
-TEST_CASE("sum_array.asm adds up 5 numbers in memory", "[programs]") {
+TEST_CASE("sum_array.asm adds up 5 numbers in memory with a loop", "[programs]") {
     Cpu cpu = runExample("sum_array.asm");
     REQUIRE(cpu.registerValue(reg::A) == 150);
+    REQUIRE(cpu.registerValue(reg::B) == 0x85);  // the pointer moved past all 5 elements
+    REQUIRE(cpu.registerValue(reg::C) == 0);     // the counter ran out
     REQUIRE(cpu.memory()[0x80] == 10);
     REQUIRE(cpu.memory()[0x84] == 50);
     REQUIRE(cpu.memory()[0x85] == 150);  // the saved total
@@ -98,7 +100,9 @@ TEST_CASE("formatInstruction shows each operand type the way it is written", "[t
 
 TEST_CASE("formatInstruction reverses the assembler", "[trace][asm]") {
     Cpu cpu;
-    cpu.loadProgram(assemble("STORE D, 0x80\nCALL 0x2A"));
+    cpu.loadProgram(assemble("STORE D, 0x80\nCALL 0x2A\nLDR C, B\nSTR A, D"));
     REQUIRE(formatInstruction(cpu.memory(), 0) == "STORE D, 0x80");
     REQUIRE(formatInstruction(cpu.memory(), 3) == "CALL 0x2A");
+    REQUIRE(formatInstruction(cpu.memory(), 5) == "LDR C, B");
+    REQUIRE(formatInstruction(cpu.memory(), 8) == "STR A, D");
 }

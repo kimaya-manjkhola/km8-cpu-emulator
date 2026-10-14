@@ -20,6 +20,8 @@ const std::vector<InstructionInfo>& instructionSet() {
         {op::LOAD,  "LOAD",  {R, M}},
         {op::STORE, "STORE", {R, M}},
         {op::MOV,   "MOV",   {R, R}},
+        {op::LDR,   "LDR",   {R, R}},
+        {op::STR,   "STR",   {R, R}},
         {op::ADD,   "ADD",   {R, R}},
         {op::SUB,   "SUB",   {R, R}},
         {op::INC,   "INC",   {R}},
@@ -41,7 +43,7 @@ const std::vector<InstructionInfo>& instructionSet() {
 }
 
 const InstructionInfo* findInstructionByName(const std::string& name) {
-    // A linear search is fine: there are only 22 instructions.
+    // A linear search is fine: there are only 24 instructions.
     for (const InstructionInfo& info : instructionSet()) {
         if (info.name == name) {
             return &info;

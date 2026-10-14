@@ -15,6 +15,8 @@ constexpr std::uint8_t LDI   = 0x02;
 constexpr std::uint8_t LOAD  = 0x03;
 constexpr std::uint8_t STORE = 0x04;
 constexpr std::uint8_t MOV   = 0x05;
+constexpr std::uint8_t LDR   = 0x06;  // register-indirect load
+constexpr std::uint8_t STR   = 0x07;  // register-indirect store
 
 // Arithmetic
 constexpr std::uint8_t ADD = 0x10;

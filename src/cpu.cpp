@@ -164,6 +164,23 @@ void Cpu::execute(std::uint8_t opcode) {
             break;
         }
 
+        // LDR and STR use a register as a pointer: the address comes from a
+        // register at run time, not from a fixed operand byte. This is what
+        // lets a loop step through an array by incrementing the pointer.
+        case op::LDR: {  // LDR r1, r2 - r1 = memory[r2]
+            std::uint8_t& r1 = fetchRegister();
+            std::uint8_t address = fetchRegister();
+            r1 = memory_[address];
+            break;
+        }
+
+        case op::STR: {  // STR r1, r2 - memory[r2] = r1
+            std::uint8_t value = fetchRegister();
+            std::uint8_t address = fetchRegister();
+            memory_[address] = value;
+            break;
+        }
+
         // ----- Arithmetic -----
         case op::ADD: {  // ADD r1, r2
             std::uint8_t& r1 = fetchRegister();
