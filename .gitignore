@@ -7,3 +7,11 @@ cmake-build-*/
 .vscode/
 .idea/
 .DS_Store
+
+# Private notes: kept on this Mac only, never uploaded
+CLAUDE.md
+docs/HOW_IT_WORKS.md
+docs/INTERVIEW_QA.md
+
+# Local tool settings: kept on this Mac only
+.claude/

@@ -192,8 +192,6 @@ tests/              Catch2 unit tests (one file per area)
 programs/           example KM-8 assembly programs
 docs/
   SPEC.md           the CPU specification (source of truth)
-  HOW_IT_WORKS.md   a beginner's walk through the code
-  INTERVIEW_QA.md   likely interview questions and answers
 ```
 
 The build makes three targets. `km8_core` is a library containing everything except `main()`. `km8` is the command-line program and `km8_tests` is the test program. Both link to `km8_core`, so the tests check exactly the code the CLI runs.
@@ -227,5 +225,3 @@ The build makes three targets. `km8_core` is a library containing everything exc
 ## Documentation
 
 - [docs/SPEC.md](docs/SPEC.md): the CPU specification
-- [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md): a line-by-line guide to the code for someone new to C++
-- [docs/INTERVIEW_QA.md](docs/INTERVIEW_QA.md): likely interview questions with answers
