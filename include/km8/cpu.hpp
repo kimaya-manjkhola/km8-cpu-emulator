@@ -90,6 +90,10 @@ private:
     // Read the jump target operand, then jump to it only if condition is true.
     void jumpIf(bool condition);
 
+    // Stack helpers, shared by PUSH/POP and CALL/RET.
+    void push(std::uint8_t value);
+    std::uint8_t pop();
+
     // Stop the CPU and throw a CpuError that says where it happened.
     [[noreturn]] void fail(const std::string& message);
 

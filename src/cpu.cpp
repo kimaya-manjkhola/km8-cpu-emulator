@@ -114,6 +114,20 @@ void Cpu::jumpIf(bool condition) {
     }
 }
 
+void Cpu::push(std::uint8_t value) {
+    // Decrement first, then write: SP starts at 0, so the first push wraps SP
+    // to 255 and uses the top byte of memory. The stack grows downwards.
+    --sp_;
+    memory_[sp_] = value;
+}
+
+std::uint8_t Cpu::pop() {
+    // The exact reverse of push(): read first, then increment.
+    std::uint8_t value = memory_[sp_];
+    ++sp_;
+    return value;
+}
+
 void Cpu::execute(std::uint8_t opcode) {
     // The decoder: one case per opcode, like a case statement in Verilog.
     // Operands are always fetched in the order they appear in memory.
@@ -224,6 +238,30 @@ void Cpu::execute(std::uint8_t opcode) {
 
         case op::JC:
             jumpIf(carry_);
+            break;
+
+        // ----- Stack and subroutines -----
+        case op::PUSH:  // PUSH r
+            push(fetchRegister());
+            break;
+
+        case op::POP: {  // POP r
+            std::uint8_t& r = fetchRegister();
+            r = pop();
+            break;
+        }
+
+        case op::CALL: {  // CALL addr
+            std::uint8_t target = fetchByte();
+            // After fetching the operand, PC already points at the next
+            // instruction, which is exactly the return address we need.
+            push(pc_);
+            pc_ = target;
+            break;
+        }
+
+        case op::RET:
+            pc_ = pop();
             break;
 
         default:
