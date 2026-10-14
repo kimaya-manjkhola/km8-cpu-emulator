@@ -1,0 +1,9 @@
+# Build output (CMake build folders)
+build/
+build-*/
+cmake-build-*/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
